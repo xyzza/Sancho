@@ -6,42 +6,31 @@ from telegram.ext import (
 with open('../conf', 'r') as conf:
     TOKEN = conf.read()
 
+TEXT = u''
 
 # STATES
-WAIT_FOR_TASK, WRITING_TASK = 1, 2
+DO_SOMETHING= 1
 
 
 def start(bot, update):
-    bot.sendMessage(update.message.chat_id, text=u'Принимаю описание задачи')
-    return WRITING_TASK
+    bot.sendMessage(update.message.chat_id, 'started')
+    return DO_SOMETHING
 
 
-def cancel(bot, update):
-    bot.sendMessage(update.message.chat_id,
-                    text='Canceled')
+def stop(bot, update):
+    bot.sendMessage(update.message.chat_id, 'Ended')
     return ConversationHandler.END
 
 
-def _help(bot, update):
-    bot.sendMessage(update.message.chat_id, text=u'Справка')
-    return WAIT_FOR_TASK
+def cancel(bot, update):
+    bot.sendMessage(update.message.chat_id, text='Canceled')
+    return ConversationHandler.END
 
 
-def error(bot, update, error):
-    pass
-
-
-def foo(bot, update):
-    return WAIT_FOR_TASK
-
-# def gender(bot, update):
-#     user = update.message.from_user
-#     logger.info("Gender of %s: %s" % (user.first_name, update.message.text))
-#     bot.sendMessage(update.message.chat_id,
-#                     text='I see! Please send me a photo of yourself, '
-#                          'so I know what you look like, or send /skip if you don\'t want to.')
-#
-#     return PHOTO
+def do_something(bot, update):
+    bot.sendMessage(update.message.chat_id, update.message.text)
+    bot.sendMessage(update.message.chat_id, 'do something')
+    return DO_SOMETHING
 
 
 def main():
@@ -53,19 +42,13 @@ def main():
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start),
-                      CommandHandler('help', _help)],
+        entry_points=[CommandHandler('start', start)],
+
+        allow_reentry=True,
 
         states={
-            WRITING_TASK: [RegexHandler('^(Boy|Girl|Other)$', foo)],
-
-            WAIT_FOR_TASK: [MessageHandler([Filters.text], start),
-                    CommandHandler('cancel', cancel)],
-
-            # LOCATION: [MessageHandler([Filters.location], location),
-            #            CommandHandler('skip', skip_location)],
-            #
-            # BIO: [MessageHandler([Filters.text], bio)]
+            DO_SOMETHING: [MessageHandler([Filters.text], do_something),
+                           CommandHandler('stop', stop)],
         },
 
         fallbacks=[CommandHandler('cancel', cancel)]
@@ -74,7 +57,7 @@ def main():
     dp.add_handler(conv_handler)
 
     # log all errors
-    dp.add_error_handler(error)
+    # dp.add_error_handler(error)
 
     # Start the Bot
     updater.start_polling()
